@@ -1,7 +1,10 @@
 eclipse.preferences.version=1
 encoding//com/king/bgBug/__init__.py=utf-8
+encoding//com/king/bgBug/queryHttp.py=utf-8
 encoding//com/king/bgBug/test.py=utf-8
 encoding//com/king/bgBug/zlBug.py=utf-8
+encoding//com/king/captcha/__init__.py=utf-8
+encoding//com/king/captcha/cap.py=utf-8
 encoding//com/king/db/orcl.py=utf-8
 encoding//com/king/db/orclDb.py=utf-8
 encoding//com/king/demo/App.py=gbk

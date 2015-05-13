@@ -3,7 +3,10 @@ import logging
 import urllib2
 import re
 import os, sys
+from com.king.vo.gsxx import gsmm
 from pyquery import PyQuery as pq
+from com.king.db.orclDb import orclDb
+import time
 
 LOG_FILENAME = "log_test.log"
 logging.basicConfig(filename=LOG_FILENAME, level=logging.NOTSET, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s', datefmt='%a, %d %b %Y %H:%M:%S')
@@ -40,15 +43,17 @@ def readHtml(myUrl):
     unicodePage = myPage  
     return unicodePage
 def writeTxt(body):
-    f = open(r'zpxx_1.txt', 'a')
+    f = open(r'zpxx_test.txt', 'a')
     f.write(body)
     f.close()  
     
-zlUrl = ['http://sou.zhaopin.com/jobs/searchresult.ashx?jl=%E6%B2%88%E9%98%B3&kw=%E7%A8%8B%E5%BA%8F%E5%91%98&sm=0&p=1']
+# zlUrl = ['http://sou.zhaopin.com/jobs/searchresult.ashx?jl=%E6%B2%88%E9%98%B3&kw=%E7%A8%8B%E5%BA%8F%E5%91%98&sm=0&p=1']
 
-#zlUrl = ['http://sou.zhaopin.com/jobs/searchresult.ashx?jl=沈阳&kw=软件&isadv=0&sg=53a0936a01f040efb26d4acfe0642ffb&p=1']
+zlUrl = ['http://sou.zhaopin.com/jobs/searchresult.ashx?jl=沈阳&kw=软件&isadv=0&sg=53a0936a01f040efb26d4acfe0642ffb&p=1']
          
 zl_href = []
+db_Store = orclDb()
+db = db_Store.conDb()
 # 获取智联招聘初始页的thml
 while zlUrl: 
     html = readHtml(zlUrl.pop())
@@ -73,9 +78,14 @@ while zl_href:
     gsmc = cc('.inner-left a').text().encode('utf-8')
     if gsmc == '':
         continue
+    # 创建用户对象，进行设置对象
+    
+    gszpxx = gsmm()
+    gszpxx.setgsmc(gsmc)
+    
     logging.info('公司名称 ： ' + gsmc)
-    writeTxt('公司名称 ： ' + gsmc + '|')
     # 解析公司信息
+    writeTxt('公司名称 ： ' + gsmc + '|')
     try:
         sts = cc('.terminal-ul')
         logging.info('获取的元素个数 : %s' , len(sts))
@@ -86,16 +96,58 @@ while zl_href:
                 msnr = pq(x).text().encode('utf-8')
                 msxx = msnr.split('：')
                 for xs in msxx:
-                    print xs.lstrip()
-                    print '===='
+                    fote = xs.lstrip()
+                    if fote == '职位月薪':
+                        gszpxx.setzwyx(msxx[1].lstrip())
+                    if fote == '工作地点':
+                        gszpxx.setgzdd(msxx[1].lstrip())
+                    if fote == '发布日期':
+                        gszpxx.setfbrq(msxx[1].lstrip())
+                    if fote == '工作性质':
+                        gszpxx.setgzxz(msxx[1].lstrip())
+                    if fote == '工作经验':
+                        gszpxx.setgzjy(msxx[1].lstrip())
+                    if fote == '最低学历':
+                        gszpxx.setzdxl(msxx[1].lstrip())
+                    if fote == '招聘人数':
+                        gszpxx.setzprs(msxx[1].lstrip())
+                    if fote == '职位类别':
+                        gszpxx.setzwlb(msxx[1].lstrip())
+                    if fote == '公司规模':
+                        gszpxx.setgsgm(msxx[1].lstrip())
+                    if fote == '公司性质':
+                        gszpxx.setgsxz(msxx[1].lstrip())
+                    if fote == '公司行业':
+                        gszpxx.setgshy(msxx[1].lstrip())
+                    if fote == '公司地址':
+                        gszpxx.setgsdz(msxx[1].lstrip())
+                    if fote == '公司主页':
+                        gszpxx.setgszy(msxx[1].lstrip())
                 logging.info(msnr)
                 writeTxt(msnr + '|')
+#             print '职位月薪是: ' + gszpxx.zwyx
+#             print '工作地点是: ' + gszpxx.gzdd
+#             print '发布日期是: ' + gszpxx.fbrq
+#             print '工作性质是: ' + gszpxx.gzxz
+#             print '工作经验是: ' + gszpxx.gzjy
     except:
         raise
     # 解析公司介绍
     logging.info('公司介绍 : %s', cc('.tab-inner-cont').eq(1).text().encode('utf-8'))
     writeTxt(cc('.tab-inner-cont').eq(1).text().encode('utf-8') + '|')
+    gszpxx.setgsjs(cc('.tab-inner-cont').eq(1).text().encode('utf-8'))
     logging.info('职位描述: %s', cc('.tab-inner-cont').eq(0).text().encode('utf-8'))
     writeTxt(cc('.tab-inner-cont').eq(0).text().encode('utf-8') + '|')
+    gszpxx.setzwms(cc('.tab-inner-cont').eq(0).text().encode('utf-8'))
     writeTxt('\n')
+#     print '公司介绍是:' + gszpxx.gsjs
+#     print '职位描述是:' + gszpxx.zwms
+    insert_sql = 'insert into Tb_BUG_INFO (RID, BUG_TYPE, QUERY_INFO, GSMC, YX, GZDD, FBSJ, GZXZ, GZJY, ZDXL, ZPRS, ZWLB, GSGM, GSSZ, HY, ZY, DZ, GSJS, GWZZ, BUG_DATA)'
+    insert_sql += "values (TB_BUG_SEQ.NEXTVAL, '智联', '软件', :GSMC, :YX, :GZDD, :FBSJ, :GZXZ, :GZJY, :ZDXL, :ZPRS, :ZWLB, :GSGM, :GSSZ, :HY, :ZY, :DZ, :GSJS, :GWZZ, sysdate)"
+    parms = [gszpxx.gsmc,gszpxx.zwyx,gszpxx.gzdd,gszpxx.fbrq,
+            gszpxx.gzxz,gszpxx.gzjy,gszpxx.zdxl,gszpxx.zprs,
+            gszpxx.zwlb,gszpxx.gsgm,gszpxx.gsxz,gszpxx.gshy,gszpxx.gszy,gszpxx.gsdz,gszpxx.gsjs,gszpxx.zwms]
+    db_Store.insertData(db, insert_sql, parms)
     logging.info('################################################################################')
+    time.sleep(3)
+db_Store.closeDb(db)

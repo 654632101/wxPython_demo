@@ -32,14 +32,16 @@ class orclDb():
            db.commit()
            cur.close()
        except:
+           print Exception.message
            return -1
+       print '数据插入成功！'
        return 1
    # 关闭数据库连接
    def closeDb(self, db):
        db.close()
-#        
-# dataStore = orclDb()
-# orcl_db = dataStore.conDb()
-# print orcl_db
-# reslos = dataStore.queryData(orcl_db, 'select * from emp')
-# print "print all:(%s)" % reslos
+        
+dataStore = orclDb()
+orcl_db = dataStore.conDb()
+print orcl_db
+reslos = dataStore.queryData(orcl_db, 'select * from emp')
+print "print all:(%s)" % reslos

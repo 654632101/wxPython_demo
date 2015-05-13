@@ -7,6 +7,7 @@ from com.king.vo.gsxx import gsmm
 from pyquery import PyQuery as pq
 from com.king.db.orclDb import orclDb
 import time
+import cookielib
 
 LOG_FILENAME = "log_test.log"
 logging.basicConfig(filename=LOG_FILENAME, level=logging.NOTSET, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s', datefmt='%a, %d %b %Y %H:%M:%S')
@@ -34,7 +35,11 @@ def findZL(html):
         logging.info('25 ==== > ' + str(len(hre.attr('href'))))
         if str(len(hre.attr('href'))) > 50:
             zl_href.append(hre.attr('href'))
-def readHtml(myUrl):       
+def readHtml(myUrl): 
+    cj = cookielib.LWPCookieJar()  
+    cookie_support = urllib2.HTTPCookieProcessor(cj)  
+    opener = urllib2.build_opener(cookie_support, urllib2.HTTPHandler)  
+    urllib2.install_opener(opener) 
     myResponse = urllib2.urlopen(myUrl) 
     logging.info(myResponse.geturl())
 #     logging.info( myResponse.getcode())
@@ -49,14 +54,20 @@ def writeTxt(body):
     
 # zlUrl = ['http://sou.zhaopin.com/jobs/searchresult.ashx?jl=%E6%B2%88%E9%98%B3&kw=%E7%A8%8B%E5%BA%8F%E5%91%98&sm=0&p=1']
 
-zlUrl = ['http://sou.zhaopin.com/jobs/searchresult.ashx?jl=沈阳&kw=软件&isadv=0&sg=53a0936a01f040efb26d4acfe0642ffb&p=1']
-         
+#zlUrl = ['http://sou.zhaopin.com/jobs/searchresult.ashx?jl=%E6%B2%88%E9%98%B3&kw=%E8%BD%AF%E4%BB%B6&isadv=0&sg=53a0936a01f040efb26d4acfe0642ffb&p=1']
+zlUrl = ['http://sou.zhaopin.com/jobs/searchresult.ashx?in=210500%3B160400%3B160000%3B160500%3B300100%3B160100%3B200300&jl=%E6%B2%88%E9%98%B3&sm=0&p=1&sf=0&st=99999&isadv=1']
+      
 zl_href = []
 db_Store = orclDb()
 db = db_Store.conDb()
 # 获取智联招聘初始页的thml
 while zlUrl: 
-    html = readHtml(zlUrl.pop())
+    try:
+        url_x = zlUrl.pop()
+        html = readHtml(url_x)
+    except:
+        logging.error('链接解析错误%s',url_x)
+        continue
     next_flag = pq(html)
     flag = next_flag('.next-page').attr('href')
     if flag == None:
@@ -66,12 +77,17 @@ while zlUrl:
     logging.info('################################################################################')
     findZL(html)
     logging.info('返回明细超链接 ===> ')
+flag_num = 0
 while zl_href:
     logging.info('################################################################################')
     ur = zl_href.pop()
     logging.info('执行URL ： ' + ur)
     # 获取到返回的明细HTML
-    ret_html = readHtml(ur)
+    try:
+        ret_html = readHtml(ur)
+    except:
+        logging.error('链接解析错误%s',ur)
+        continue
     # 转成pq对象
     cc = pq(ret_html)
     # 解析出公司名称
@@ -79,7 +95,8 @@ while zl_href:
     if gsmc == '':
         continue
     # 创建用户对象，进行设置对象
-    
+    flag_num +=1
+    print '插入数量%s',flag_num
     gszpxx = gsmm()
     gszpxx.setgsmc(gsmc)
     
@@ -143,11 +160,15 @@ while zl_href:
 #     print '公司介绍是:' + gszpxx.gsjs
 #     print '职位描述是:' + gszpxx.zwms
     insert_sql = 'insert into Tb_BUG_INFO (RID, BUG_TYPE, QUERY_INFO, GSMC, YX, GZDD, FBSJ, GZXZ, GZJY, ZDXL, ZPRS, ZWLB, GSGM, GSSZ, HY, ZY, DZ, GSJS, GWZZ, BUG_DATA)'
-    insert_sql += "values (TB_BUG_SEQ.NEXTVAL, '智联', '软件', :GSMC, :YX, :GZDD, :FBSJ, :GZXZ, :GZJY, :ZDXL, :ZPRS, :ZWLB, :GSGM, :GSSZ, :HY, :ZY, :DZ, :GSJS, :GWZZ, sysdate)"
+    insert_sql += "values (TB_BUG_SEQ.NEXTVAL, '智联', '互联网', :GSMC, :YX, :GZDD, :FBSJ, :GZXZ, :GZJY, :ZDXL, :ZPRS, :ZWLB, :GSGM, :GSSZ, :HY, :ZY, :DZ, :GSJS, :GWZZ, sysdate)"
     parms = [gszpxx.gsmc,gszpxx.zwyx,gszpxx.gzdd,gszpxx.fbrq,
             gszpxx.gzxz,gszpxx.gzjy,gszpxx.zdxl,gszpxx.zprs,
             gszpxx.zwlb,gszpxx.gsgm,gszpxx.gsxz,gszpxx.gshy,gszpxx.gszy,gszpxx.gsdz,gszpxx.gsjs,gszpxx.zwms]
-    db_Store.insertData(db, insert_sql, parms)
+    flag = db_Store.insertData(db, insert_sql, parms)
+    if flag == 1:
+        logging.info('插入成功！')
+    else:
+        logging.error('插入失败！ %s',flag)
     logging.info('################################################################################')
-    time.sleep(3)
+#     time.sleep(3)
 db_Store.closeDb(db)
